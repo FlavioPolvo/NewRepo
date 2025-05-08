@@ -586,35 +586,62 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSubmit, onCancel }) => {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Digite o código da cor (1-157)</p>
+                      <p>Digite o código da cor (1-7)</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <div className="flex gap-2">
-                <Input
-                  id="colorCode"
-                  type="number"
-                  min="1"
-                  max="157"
-                  value={formData.colorCode?.toString() || ""}
-                  onChange={(e) =>
-                    handleInputChange("colorCode", e.target.value)
-                  }
-                  placeholder="Código da cor (1-157)"
-                  className="w-1/2"
-                />
-                {selectedColor && (
-                  <div className="flex items-center gap-2 border rounded px-3 w-1/2">
-                    <div
-                      className="w-4 h-4 rounded-full"
-                      style={{
-                        backgroundColor: selectedColor.hex_color || "#888888",
-                      }}
-                    />
-                    <span>{selectedColor.name}</span>
-                  </div>
-                )}
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <Input
+                    id="colorCode"
+                    type="number"
+                    placeholder="Digite o código da cor"
+                    value={formData.colorCode?.toString() || ""}
+                    onChange={(e) =>
+                      handleInputChange("colorCode", e.target.value)
+                    }
+                    className="w-1/3"
+                  />
+                  {selectedColor && (
+                    <div className="flex items-center gap-2 border rounded px-3 w-2/3">
+                      <div
+                        className="w-4 h-4 rounded-full"
+                        style={{
+                          backgroundColor: selectedColor.hex_color || "#888888",
+                        }}
+                      />
+                      <span>
+                        {selectedColor.code} - {selectedColor.name}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 overflow-x-auto py-2 px-1">
+                  {colors
+                    .filter(
+                      (color, index, self) =>
+                        self.findIndex((c) => c.name === color.name) === index,
+                    )
+                    .map((color) => (
+                      <button
+                        key={color.id}
+                        type="button"
+                        className="flex items-center gap-1 border rounded px-2 py-1 hover:bg-gray-100"
+                        onClick={() =>
+                          handleInputChange("colorCode", color.code.toString())
+                        }
+                      >
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{
+                            backgroundColor: color.hex_color || "#888888",
+                          }}
+                        />
+                        <span className="text-xs">{color.name}</span>
+                      </button>
+                    ))}
+                </div>
               </div>
             </div>
           </div>

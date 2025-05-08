@@ -1,9 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { saveProducer } from "@/lib/supabase";
+import {
+  saveProducer,
+  getMunicipalities,
+  getCommunities,
+} from "@/lib/supabase";
 
 import {
   Card,
@@ -66,6 +70,34 @@ type FormValues = z.infer<typeof formSchema>;
 
 const ProducerForm = () => {
   const [activeTab, setActiveTab] = useState("personal");
+  const [municipalities, setMunicipalities] = useState<any[]>([]);
+  const [communities, setCommunities] = useState<any[]>([]);
+  const [filteredCommunities, setFilteredCommunities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch municipalities and communities data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch municipalities
+        const municipalitiesData = await getMunicipalities();
+        setMunicipalities(municipalitiesData);
+
+        // Fetch communities
+        const communitiesData = await getCommunities();
+        setCommunities(communitiesData);
+        setFilteredCommunities(communitiesData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -360,16 +392,61 @@ const ProducerForm = () => {
                       id="cod_municipio"
                       {...form.register("cod_municipio")}
                       placeholder="Código do município"
+                      readOnly
+                      className={
+                        form.getValues("municipio") ? "bg-gray-100" : ""
+                      }
                     />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="municipio">Município</Label>
-                    <Input
-                      id="municipio"
-                      {...form.register("municipio")}
-                      placeholder="Nome do município"
-                    />
+                    <Select
+                      onValueChange={(value) => {
+                        const selectedMunicipality = municipalities.find(
+                          (m) => m.name === value,
+                        );
+                        if (selectedMunicipality) {
+                          form.setValue("municipio", value);
+                          form.setValue(
+                            "cod_municipio",
+                            selectedMunicipality.id.toString(),
+                          );
+
+                          // Filter communities based on selected municipality
+                          const filtered = communities.filter(
+                            (c) =>
+                              c.municipality_id === selectedMunicipality.id,
+                          );
+                          setFilteredCommunities(filtered);
+
+                          // Reset community if it doesn't belong to the selected municipality
+                          const currentCommunity = form.getValues("comunidade");
+                          const communityExists = filtered.some(
+                            (c) => c.name === currentCommunity,
+                          );
+                          if (!communityExists) {
+                            form.setValue("comunidade", "");
+                          }
+                        }
+                      }}
+                      value={form.getValues("municipio") || ""}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um município" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {municipalities.map((municipality) => (
+                          <SelectItem
+                            key={municipality.id}
+                            value={municipality.name}
+                          >
+                            {municipality.id} - {municipality.name} (
+                            {municipality.region})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">
@@ -417,11 +494,24 @@ const ProducerForm = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="comunidade">Comunidade</Label>
-                    <Input
-                      id="comunidade"
-                      {...form.register("comunidade")}
-                      placeholder="Nome da comunidade"
-                    />
+                    <Select
+                      onValueChange={(value) => {
+                        form.setValue("comunidade", value);
+                      }}
+                      value={form.getValues("comunidade") || ""}
+                      disabled={!form.getValues("municipio")}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma comunidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredCommunities.map((community) => (
+                          <SelectItem key={community.id} value={community.name}>
+                            {community.id} - {community.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </TabsContent>
