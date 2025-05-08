@@ -1,0 +1,9 @@
+import SupabaseConfig from "@/components/SupabaseConfig";
+
+export default function SupabaseConfigStoryboard() {
+  return (
+    <div className="bg-white p-6">
+      <SupabaseConfig />
+    </div>
+  );
+}
