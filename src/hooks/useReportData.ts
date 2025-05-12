@@ -60,7 +60,11 @@ export interface ReportData {
     averagePerProducer: number;
     totalProducers: number;
     productionByMonth: Array<{ month: string; production: number }>;
-    productionByColor: Array<{ color: string; percentage: number }>;
+    productionByColor: Array<{
+      color: string;
+      hexColor: string;
+      percentage: number;
+    }>;
     productionByMunicipality: Array<{
       municipality: string;
       production: number;
