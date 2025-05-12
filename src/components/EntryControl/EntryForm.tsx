@@ -226,7 +226,17 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSubmit, onCancel }) => {
   };
 
   const handleProducerSelect = (producerId: string) => {
-    handleProducerChange(producerId);
+    // Convert producerId to string to ensure consistent type handling
+    const producer = producers.find((p) => String(p.id) === String(producerId));
+    if (producer) {
+      setFormData((prev) => ({
+        ...prev,
+        producerId: String(producer.id),
+        producerName: producer.name,
+        municipality: producer.municipality || "",
+        community: producer.community || "",
+      }));
+    }
     setOpenProducerSearch(false);
   };
 

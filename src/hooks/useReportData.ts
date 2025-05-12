@@ -118,27 +118,30 @@ export const useReportData = () => {
           community: p.community || "",
         }));
 
-        const entriesData: EntryRecord[] = entriesResult.map((e: any) => ({
-          id: e.id,
-          date: new Date(e.date),
-          producerId: e.producer_id,
-          producerName: e.producers?.name || "N/A", // Corrigido para e.producers.name
-          municipality:
-            e.producers?.municipality || e.municipality_id?.toString() || "N/A", // Usar do producer ou o ID
-          community: e.producers?.community || "N/A", // Usar do producer
-          quantity: e.quantity,
-          grossWeight: e.gross_weight,
-          netWeight: e.net_weight,
-          tare: e.tare,
-          totalTare: e.total_tare, // Adicionado, estava faltando no schema original mas presente no mock
-          unitValue: e.unit_value,
-          totalValue: e.total_value,
-          colorCode: e.color_code,
-          humidity: e.humidity,
-          apiary: e.apiary || "",
-          lot: e.lot || "",
-          contract: e.contract || "",
-        }));
+        const entriesData: EntryRecord[] = entriesResult.map((e: any) => {
+          // Ensure we have valid data for each entry
+          console.log("Processing entry:", e);
+          return {
+            id: e.id,
+            date: new Date(e.date),
+            producerId: e.producer_id,
+            producerName: e.producers?.name || "N/A",
+            municipality: e.producers?.municipality || "N/A",
+            community: e.producers?.community || "N/A",
+            quantity: e.quantity || 0,
+            grossWeight: e.gross_weight || 0,
+            netWeight: e.net_weight || 0,
+            tare: e.tare || 0,
+            totalTare: e.total_tare || 0,
+            unitValue: e.unit_value || 0,
+            totalValue: e.total_value || 0,
+            colorCode: e.color_code || "",
+            humidity: e.humidity || 0,
+            apiary: e.apiary || "",
+            lot: e.lot || "",
+            contract: e.contract || "",
+          };
+        });
         console.log("Processed entriesData:", entriesData);
 
         const municipalitiesData: Municipality[] = municipalitiesResult.map(
@@ -209,16 +212,23 @@ export const useReportData = () => {
             console.warn("Entry with no colorCode:", entry);
             return; // Skip entries without color code
           }
-          const colorInfo = colorsData.find((c) => c.code === entry.colorCode);
+
+          // Convert colorCode to string for comparison if needed
+          const colorCodeStr = String(entry.colorCode);
+          const colorInfo = colorsData.find(
+            (c) => String(c.code) === colorCodeStr,
+          );
+
           if (!colorInfo) {
             console.warn(`No color found for code: ${entry.colorCode}`);
             return; // Skip if color not found
           }
-          const colorName = colorInfo.name;
+
+          const colorName = colorInfo.name || `Cor ${entry.colorCode}`;
           if (!productionByColor[colorName]) {
             productionByColor[colorName] = {
               production: 0,
-              hexColor: colorInfo.hexColor,
+              hexColor: colorInfo.hexColor || "#999999",
             };
           }
           productionByColor[colorName].production += entry.netWeight || 0;
