@@ -99,7 +99,7 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
   // Usar o hook para buscar os dados
-  const { data, loading, error } = useReportData();
+  const { data, loading, error, refreshData } = useReportData();
   const { producers, entries, municipalities, colors, productionSummary } =
     data;
 
@@ -1506,6 +1506,25 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
               </Button>
               <Button variant="outline" size="sm" onClick={resetFilters}>
                 <RefreshCw className="h-4 w-4 mr-1" /> Limpar Filtros
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  refreshData();
+                }}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />{" "}
+                    Atualizando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-1" /> Atualizar Dados
+                  </>
+                )}
               </Button>
             </div>
           </div>

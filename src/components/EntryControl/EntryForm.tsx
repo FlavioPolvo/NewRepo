@@ -269,8 +269,36 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSubmit, onCancel }) => {
         const savedEntry = await saveEntry(entryData);
         console.log("Entry saved successfully:", savedEntry);
 
-        // Clear form or notify user
+        // Clear form and notify user
         alert("Registro salvo com sucesso!");
+
+        // Reset form data
+        setFormData({
+          date: new Date(),
+          producerId: "",
+          producerName: "",
+          municipality: "",
+          community: "",
+          quantity: 0,
+          grossWeight: 0,
+          netWeight: 0,
+          tare: 0,
+          totalTare: 0,
+          unitValue: 0,
+          totalValue: 0,
+          colorCode: "",
+          humidity: 0,
+          apiary: "",
+          lot: "",
+          contract: "",
+          ce: "",
+          anal: "",
+          prod: "",
+        });
+        setDate(new Date());
+        setSelectedColor(null);
+        setOpenProducerSearch(false);
+        setSearchTerm("");
 
         // Call onSubmit if provided
         if (onSubmit) {
@@ -627,31 +655,7 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSubmit, onCancel }) => {
                     </div>
                   )}
                 </div>
-                <div className="flex gap-2 overflow-x-auto py-2 px-1">
-                  {colors
-                    .filter(
-                      (color, index, self) =>
-                        self.findIndex((c) => c.name === color.name) === index,
-                    )
-                    .map((color) => (
-                      <button
-                        key={color.id}
-                        type="button"
-                        className="flex items-center gap-1 border rounded px-2 py-1 hover:bg-gray-100"
-                        onClick={() =>
-                          handleInputChange("colorCode", color.code.toString())
-                        }
-                      >
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{
-                            backgroundColor: color.hex_color || "#888888",
-                          }}
-                        />
-                        <span className="text-xs">{color.name}</span>
-                      </button>
-                    ))}
-                </div>
+                {/* Color selection buttons removed as requested */}
               </div>
             </div>
           </div>
