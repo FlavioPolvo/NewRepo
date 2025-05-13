@@ -77,6 +77,8 @@ interface EntryFormData {
   ce: string; // Certificado de Entrada
   anal: string; // Análise
   prod: string; // Produção
+  analysisDate: Date | null; // Data da Análise
+  invoiceNumber: string; // Nota Fiscal
 }
 
 const EntryForm: React.FC<EntryFormProps> = ({ onSubmit, onCancel }) => {
@@ -102,6 +104,8 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSubmit, onCancel }) => {
     ce: "",
     anal: "",
     prod: "",
+    analysisDate: null,
+    invoiceNumber: "",
   });
 
   // State for data from Supabase
@@ -135,9 +139,9 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSubmit, onCancel }) => {
         console.log("Fetched municipalities:", municipalitiesData);
         setMunicipalities(municipalitiesData);
 
-        // Fetch communities
+        // Fetch communities from communities_2 table
         const communitiesData = await getCommunities();
-        console.log("Fetched communities:", communitiesData);
+        console.log("Fetched communities from communities_2:", communitiesData);
         setCommunities(communitiesData);
         setFilteredCommunities(communitiesData);
 
@@ -263,6 +267,12 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSubmit, onCancel }) => {
           ce: formData.ce || null,
           anal: formData.anal || null,
           prod: formData.prod || null,
+          municipality: formData.municipality || null,
+          community: formData.community || null,
+          analysis_date: formData.analysisDate
+            ? format(formData.analysisDate, "yyyy-MM-dd")
+            : null,
+          invoice_number: formData.invoiceNumber || null,
         };
 
         // Save to Supabase
@@ -294,6 +304,8 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSubmit, onCancel }) => {
           ce: "",
           anal: "",
           prod: "",
+          analysisDate: null,
+          invoiceNumber: "",
         });
         setDate(new Date());
         setSelectedColor(null);
@@ -698,9 +710,7 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSubmit, onCancel }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-            {" "}
-            {/* MODIFICADO: de md:grid-cols-3 para md:grid-cols-1 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Contract */}
             <div className="space-y-2">
               <Label htmlFor="contract">Contrato</Label>
@@ -710,9 +720,53 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSubmit, onCancel }) => {
                 onChange={(e) => handleInputChange("contract", e.target.value)}
               />
             </div>
-            {/* CE e Anal REMOVIDOS DAQUI */}
+
+            {/* Invoice Number (Nota Fiscal) */}
+            <div className="space-y-2">
+              <Label htmlFor="invoiceNumber">Nota Fiscal</Label>
+              <Input
+                id="invoiceNumber"
+                value={formData.invoiceNumber || ""}
+                onChange={(e) =>
+                  handleInputChange("invoiceNumber", e.target.value)
+                }
+                placeholder="Número da nota fiscal"
+              />
+            </div>
+
+            {/* Analysis Date (Data da Análise) */}
+            <div className="space-y-2">
+              <Label htmlFor="analysisDate">Data da Análise</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !formData.analysisDate && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.analysisDate ? (
+                      format(formData.analysisDate, "dd/MM/yyyy")
+                    ) : (
+                      <span>Selecione uma data</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={formData.analysisDate || undefined}
+                    onSelect={(date) => {
+                      handleInputChange("analysisDate", date);
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
-          {/* Prod REMOVIDO DAQUI (estava em sua própria div) */}
         </form>
       </CardContent>
       <CardFooter className="flex justify-end space-x-2">

@@ -35,6 +35,8 @@ export interface EntryRecord {
   apiary: string;
   lot: string;
   contract: string;
+  analysisDate: Date | null;
+  invoiceNumber: string;
 }
 
 export interface Color {
@@ -125,8 +127,8 @@ export const useReportData = () => {
           date: new Date(e.date),
           producerId: e.producer_id,
           producerName: e.producers?.name || "N/A",
-          municipality: e.producers?.municipality || "N/A",
-          community: e.producers?.community || "N/A",
+          municipality: e.municipality || e.producers?.municipality || "N/A",
+          community: e.community || e.producers?.community || "N/A",
           quantity: e.quantity || 0,
           grossWeight: e.gross_weight || 0,
           netWeight: e.net_weight || 0,
@@ -316,8 +318,8 @@ export const useReportData = () => {
             date: new Date(e.date),
             producerId: e.producer_id,
             producerName: e.producers?.name || "N/A",
-            municipality: e.producers?.municipality || "N/A",
-            community: e.producers?.community || "N/A",
+            municipality: e.municipality || e.producers?.municipality || "N/A",
+            community: e.community || e.producers?.community || "N/A",
             quantity: e.quantity || 0,
             grossWeight: e.gross_weight || 0,
             netWeight: e.net_weight || 0,
@@ -330,6 +332,8 @@ export const useReportData = () => {
             apiary: e.apiary || "",
             lot: e.lot || "",
             contract: e.contract || "",
+            analysisDate: e.analysis_date ? new Date(e.analysis_date) : null,
+            invoiceNumber: e.invoice_number || "",
           };
         });
         console.log("Processed entriesData:", entriesData);

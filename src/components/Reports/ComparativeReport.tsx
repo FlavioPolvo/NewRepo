@@ -286,6 +286,34 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
       );
     }
 
+    if (reportType === "community") {
+      // Agrupar por comunidade
+      const entriesByCommunity: Record<
+        string,
+        { production: number; producers: Set<string> }
+      > = {};
+
+      filteredEntries.forEach((entry) => {
+        if (!entry.community) return;
+
+        if (!entriesByCommunity[entry.community]) {
+          entriesByCommunity[entry.community] = {
+            production: 0,
+            producers: new Set(),
+          };
+        }
+        entriesByCommunity[entry.community].production += entry.netWeight;
+        entriesByCommunity[entry.community].producers.add(entry.producerId);
+      });
+
+      return Object.entries(entriesByCommunity).map(([community, data]) => ({
+        name: community,
+        production: parseFloat(data.production.toFixed(2)),
+        producerCount: data.producers.size,
+        average: parseFloat((data.production / data.producers.size).toFixed(2)),
+      }));
+    }
+
     if (reportType === "producer") {
       // Agrupar por produtor
       const entriesByProducer: Record<
@@ -465,6 +493,56 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
           ];
         },
       );
+
+      // Se não houver dados filtrados, mostrar array vazio
+      if (data.length === 0) {
+        data = [];
+      }
+    } else if (reportType === "community") {
+      title = "Relatório de Produção por Comunidade";
+      headers = [
+        "Comunidade",
+        "Município",
+        "Quantidade (kg)",
+        "Nº de Produtores",
+        "Média por Produtor",
+      ];
+
+      // Agrupar entradas por comunidade
+      type CommunityStats = {
+        totalWeight: number;
+        producerCount: Set<string>;
+        municipality: string;
+      };
+
+      const entriesByCommunity = filteredEntries.reduce<
+        Record<string, CommunityStats>
+      >((acc, entry) => {
+        if (!entry.community) return acc;
+
+        if (!acc[entry.community]) {
+          acc[entry.community] = {
+            totalWeight: 0,
+            producerCount: new Set(),
+            municipality: entry.municipality || "",
+          };
+        }
+        acc[entry.community].totalWeight += entry.netWeight;
+        acc[entry.community].producerCount.add(entry.producerId);
+        return acc;
+      }, {});
+
+      // Converter para o formato da tabela
+      data = Object.entries(entriesByCommunity).map(([community, stats]) => {
+        const avgPerProducer = stats.totalWeight / stats.producerCount.size;
+        return [
+          community,
+          stats.municipality,
+          stats.totalWeight.toFixed(2),
+          stats.producerCount.size.toString(),
+          `${avgPerProducer.toFixed(1)} kg`,
+        ];
+      });
 
       // Se não houver dados filtrados, mostrar array vazio
       if (data.length === 0) {
@@ -907,6 +985,8 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
         e.apiary,
         e.lot,
         e.contract,
+        e.invoiceNumber,
+        e.analysisDate ? format(new Date(e.analysisDate), "dd/MM/yyyy") : "",
       ]);
 
       const wsEntries = XLSX.utils.aoa_to_sheet([entryHeaders, ...entryData]);
@@ -1533,9 +1613,10 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
             onValueChange={setReportType}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-6 mb-6">
+            <TabsList className="grid w-full grid-cols-7 mb-6">
               <TabsTrigger value="period">Por Período</TabsTrigger>
               <TabsTrigger value="municipality">Por Município</TabsTrigger>
+              <TabsTrigger value="community">Por Comunidade</TabsTrigger>
               <TabsTrigger value="producer">Por Produtor</TabsTrigger>
               <TabsTrigger value="color">Por Classificação</TabsTrigger>
               <TabsTrigger value="producers-list">
@@ -1708,7 +1789,7 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
                                 className="w-3 h-3 rounded-full"
                                 style={{ backgroundColor: color.hexColor }}
                               />
-                              {color.name}
+                              {color.code} - {color.name}
                             </div>
                           </SelectItem>
                         ))}
@@ -1941,6 +2022,8 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
                         <th className="p-2 text-left">Umidade (%)</th>
                         <th className="p-2 text-left">Apiário</th>
                         <th className="p-2 text-left">Lote</th>
+                        <th className="p-2 text-left">Nota Fiscal</th>
+                        <th className="p-2 text-left">Data da Análise</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1992,6 +2075,15 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
                               </td>
                               <td className="p-2">{entry.apiary}</td>
                               <td className="p-2">{entry.lot}</td>
+                              <td className="p-2">{entry.invoiceNumber}</td>
+                              <td className="p-2">
+                                {entry.analysisDate
+                                  ? format(
+                                      new Date(entry.analysisDate),
+                                      "dd/MM/yyyy",
+                                    )
+                                  : ""}
+                              </td>
                             </tr>
                           ))
                       ) : (

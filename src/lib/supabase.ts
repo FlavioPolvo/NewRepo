@@ -68,7 +68,7 @@ export async function getMunicipalities() {
 
 export async function getCommunities() {
   const { data, error } = await supabase
-    .from("communities")
+    .from("communities_2")
     .select("*")
     .order("id", { ascending: true });
 
