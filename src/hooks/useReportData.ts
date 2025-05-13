@@ -141,6 +141,8 @@ export const useReportData = () => {
           apiary: e.apiary || "",
           lot: e.lot || "",
           contract: e.contract || "",
+          analysisDate: e.analysis_date ? new Date(e.analysis_date) : null,
+          invoiceNumber: e.invoice_number || "",
         };
       });
       console.log("Processed entriesData:", entriesData);
