@@ -46,7 +46,7 @@ import {
   supabase,
   getProducers,
   getMunicipalities,
-  getCommunities,
+  getCommunitiesFromCommunities2,
   getColors,
   saveEntry,
 } from "@/lib/supabase";
@@ -140,7 +140,7 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSubmit, onCancel }) => {
         setMunicipalities(municipalitiesData);
 
         // Fetch communities from communities_2 table
-        const communitiesData = await getCommunities();
+        const communitiesData = await getCommunitiesFromCommunities2();
         console.log("Fetched communities from communities_2:", communitiesData);
         setCommunities(communitiesData);
         setFilteredCommunities(communitiesData);
