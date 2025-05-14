@@ -84,11 +84,39 @@ const ProductionSummary: React.FC<ProductionSummaryProps> = ({
     to: new Date(),
   });
 
+  // Filter data based on selections
+  const filteredData = React.useMemo(() => {
+    let filtered = { ...productionData };
+
+    // Apply municipality filter if not 'all'
+    if (municipality !== "all") {
+      filtered = {
+        ...filtered,
+        productionByMunicipality:
+          productionData.productionByMunicipality.filter(
+            (item) => item.municipality.toLowerCase() === municipality,
+          ),
+      };
+    }
+
+    // Apply color filter if not 'all'
+    if (colorFilter !== "all") {
+      filtered = {
+        ...filtered,
+        productionByColor: productionData.productionByColor.filter(
+          (item) => item.color.toLowerCase() === colorFilter,
+        ),
+      };
+    }
+
+    return filtered;
+  }, [productionData, municipality, colorFilter]);
+
   // Placeholder for chart rendering - in a real app, you would use a charting library like recharts
   const renderBarChart = () => {
     if (
-      !productionData.productionByMunicipality ||
-      productionData.productionByMunicipality.length === 0
+      !filteredData.productionByMunicipality ||
+      filteredData.productionByMunicipality.length === 0
     ) {
       return (
         <div className="h-[300px] w-full bg-background border rounded-md p-4 flex items-center justify-center">
@@ -99,11 +127,11 @@ const ProductionSummary: React.FC<ProductionSummaryProps> = ({
 
     return (
       <div className="h-[300px] w-full bg-background border rounded-md p-4 flex items-end justify-between gap-2">
-        {productionData.productionByMunicipality.map((item, index) => {
+        {filteredData.productionByMunicipality.map((item, index) => {
           const heightPercentage =
             (item.production /
               Math.max(
-                ...productionData.productionByMunicipality.map(
+                ...filteredData.productionByMunicipality.map(
                   (i) => i.production,
                 ),
               )) *
@@ -120,7 +148,9 @@ const ProductionSummary: React.FC<ProductionSummaryProps> = ({
               <span className="text-xs mt-2 text-center">
                 {item.municipality}
               </span>
-              <span className="text-xs font-medium">{item.production} kg</span>
+              <span className="text-xs font-medium">
+                {item.production.toFixed(2)} kg
+              </span>
             </div>
           );
         })}
@@ -129,22 +159,9 @@ const ProductionSummary: React.FC<ProductionSummaryProps> = ({
   };
 
   const renderLineChart = () => {
-    return (
-      <div className="h-[300px] w-full bg-background border rounded-md p-4 relative">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <LineChart className="h-32 w-32 text-muted-foreground" />
-          <span className="absolute text-sm text-muted-foreground">
-            Gráfico de tendência de produção
-          </span>
-        </div>
-      </div>
-    );
-  };
-
-  const renderPieChart = () => {
     if (
-      !productionData.productionByColor ||
-      productionData.productionByColor.length === 0
+      !filteredData.productionTrend ||
+      filteredData.productionTrend.length === 0
     ) {
       return (
         <div className="h-[300px] w-full bg-background border rounded-md p-4 flex items-center justify-center">
@@ -153,14 +170,92 @@ const ProductionSummary: React.FC<ProductionSummaryProps> = ({
       );
     }
 
+    // Find the max value for scaling
+    const maxProduction = Math.max(
+      ...filteredData.productionTrend.map((item) => item.production),
+    );
+
+    return (
+      <div className="h-[300px] w-full bg-background border rounded-md p-4 relative">
+        <div className="absolute top-4 left-4">
+          <h3 className="text-sm font-medium">Tendência de Produção</h3>
+        </div>
+        <div className="h-full w-full flex items-end justify-between gap-1 pt-8">
+          {filteredData.productionTrend.map((item, index) => {
+            const heightPercentage = (item.production / maxProduction) * 80; // 80% of container height
+            return (
+              <div
+                key={index}
+                className="flex flex-col items-center justify-end h-full"
+              >
+                <div
+                  className="w-6 bg-blue-500 rounded-t-md"
+                  style={{ height: `${heightPercentage}%` }}
+                />
+                <span className="text-xs mt-2 rotate-45 origin-top-left">
+                  {item.month}
+                </span>
+                <span className="text-xs font-medium hidden md:block">
+                  {item.production.toFixed(0)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderPieChart = () => {
+    if (
+      !filteredData.productionByColor ||
+      filteredData.productionByColor.length === 0
+    ) {
+      return (
+        <div className="h-[300px] w-full bg-background border rounded-md p-4 flex items-center justify-center">
+          <p className="text-muted-foreground">Nenhum dado disponível</p>
+        </div>
+      );
+    }
+
+    // Calculate total for the pie chart
+    const total = filteredData.productionByColor.reduce(
+      (sum, item) => sum + item.percentage,
+      0,
+    );
+    let cumulativePercentage = 0;
+
     return (
       <div className="h-[300px] w-full bg-background border rounded-md p-4 relative">
         <div className="flex flex-col items-center justify-center h-full">
-          <div className="flex items-center justify-center mb-4">
-            <PieChart className="h-32 w-32 text-muted-foreground" />
+          <div className="relative w-48 h-48 mb-4">
+            {/* Render actual pie chart segments */}
+            {filteredData.productionByColor.map((item, index) => {
+              const startAngle = (cumulativePercentage / total) * 360;
+              cumulativePercentage += item.percentage;
+              const endAngle = (cumulativePercentage / total) * 360;
+
+              return (
+                <div
+                  key={index}
+                  className="absolute inset-0 rounded-full overflow-hidden"
+                  style={{
+                    background: `conic-gradient(transparent ${startAngle}deg, ${item.hexColor || "#888888"} ${startAngle}deg ${endAngle}deg, transparent ${endAngle}deg)`,
+                    clipPath: "circle(50%)",
+                  }}
+                />
+              );
+            })}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="bg-background rounded-full w-24 h-24 flex items-center justify-center">
+                <span className="text-sm font-medium">
+                  Total: {total.toFixed(1)}%
+                </span>
+              </div>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4 w-full max-w-md">
-            {productionData.productionByColor.map((item, index) => (
+            {filteredData.productionByColor.map((item, index) => (
               <div key={index} className="flex items-center gap-2">
                 <div
                   className="w-4 h-4 rounded-full"
@@ -328,7 +423,7 @@ const ProductionSummary: React.FC<ProductionSummaryProps> = ({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {productionData.totalProduction} kg
+              {filteredData.totalProduction.toFixed(2)} kg
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Período selecionado
@@ -344,10 +439,13 @@ const ProductionSummary: React.FC<ProductionSummaryProps> = ({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {productionData.averagePerProducer} kg
+              {typeof filteredData.averagePerProducer === "number"
+                ? filteredData.averagePerProducer.toFixed(2)
+                : "0.00"}{" "}
+              kg
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {productionData.totalProducers} produtores ativos
+              {filteredData.totalProducers} produtores ativos
             </p>
           </CardContent>
         </Card>
@@ -360,28 +458,27 @@ const ProductionSummary: React.FC<ProductionSummaryProps> = ({
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              {productionData.productionByColor &&
-                productionData.productionByColor.length > 0 && (
+              {filteredData.productionByColor &&
+                filteredData.productionByColor.length > 0 && (
                   <div
                     className="w-4 h-4 rounded-full"
                     style={{
                       backgroundColor:
-                        productionData.productionByColor[0].hexColor ||
-                        "#888888",
+                        filteredData.productionByColor[0].hexColor || "#888888",
                     }}
                   />
                 )}
               <div className="text-2xl font-bold">
-                {productionData.productionByColor &&
-                productionData.productionByColor.length > 0
-                  ? productionData.productionByColor[0].color
+                {filteredData.productionByColor &&
+                filteredData.productionByColor.length > 0
+                  ? filteredData.productionByColor[0].color
                   : "Sem dados"}
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {productionData.productionByColor &&
-              productionData.productionByColor.length > 0
-                ? `Cor predominante (${productionData.productionByColor[0].percentage.toFixed(1)}%)`
+              {filteredData.productionByColor &&
+              filteredData.productionByColor.length > 0
+                ? `Cor predominante (${filteredData.productionByColor[0].percentage.toFixed(1)}%)`
                 : "Nenhuma cor registrada"}
             </p>
           </CardContent>

@@ -44,6 +44,7 @@ import {
   RefreshCw,
   Filter,
   X,
+  Search,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -68,6 +69,7 @@ import {
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 
 interface ComparativeReportProps {
   className?: string;
@@ -200,9 +202,20 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
         ? entry.producerName === selectedProducer
         : true;
 
-      // Filtrar por cor
+      // Filtrar por cor (agora usando o código diretamente)
       const colorMatch = selectedColor
-        ? entry.colorCode === colors.find((c) => c.name === selectedColor)?.code
+        ? String(entry.colorCode).trim() === String(selectedColor).trim()
+        : true;
+
+      // Filtrar por termo de busca
+      const searchMatch = searchTerm
+        ? entry.producerName
+            ?.toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          entry.municipality
+            ?.toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          entry.community?.toLowerCase().includes(searchTerm.toLowerCase())
         : true;
 
       return (
@@ -210,7 +223,8 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
         municipalityMatch &&
         regionMatch &&
         producerMatch &&
-        colorMatch
+        colorMatch &&
+        searchMatch
       );
     });
   }, [
@@ -221,6 +235,7 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
     selectedRegion,
     selectedProducer,
     selectedColor,
+    searchTerm,
     colors,
     municipalities,
   ]);
@@ -318,27 +333,42 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
       // Agrupar por produtor
       const entriesByProducer: Record<
         string,
-        { production: number; value: number; municipality: string }
+        {
+          production: number;
+          value: number;
+          municipality: string;
+          entries: number;
+        }
       > = {};
 
       filteredEntries.forEach((entry) => {
-        if (!entriesByProducer[entry.producerName]) {
-          entriesByProducer[entry.producerName] = {
+        const producerKey = entry.producerName || "Desconhecido";
+
+        if (!entriesByProducer[producerKey]) {
+          entriesByProducer[producerKey] = {
             production: 0,
             value: 0,
-            municipality: entry.municipality,
+            municipality: entry.municipality || "N/A",
+            entries: 0,
           };
         }
-        entriesByProducer[entry.producerName].production += entry.netWeight;
-        entriesByProducer[entry.producerName].value += entry.totalValue;
+        entriesByProducer[producerKey].production += entry.netWeight || 0;
+        entriesByProducer[producerKey].value += entry.totalValue || 0;
+        entriesByProducer[producerKey].entries += 1;
       });
 
-      return Object.entries(entriesByProducer).map(([producer, data]) => ({
-        name: producer,
-        production: parseFloat(data.production.toFixed(2)),
-        value: parseFloat(data.value.toFixed(2)),
-        municipality: data.municipality,
-      }));
+      // Sort by production amount (descending)
+      const result = Object.entries(entriesByProducer)
+        .map(([producer, data]) => ({
+          name: producer,
+          production: parseFloat(data.production.toFixed(2)),
+          value: parseFloat(data.value.toFixed(2)),
+          municipality: data.municipality,
+          entries: data.entries,
+        }))
+        .sort((a, b) => b.production - a.production);
+
+      return result;
     }
 
     if (reportType === "color") {
@@ -574,9 +604,13 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
         return acc;
       }, {});
 
-      // Converter para o formato da tabela
-      data = Object.entries(entriesByProducer).map(([producerName, stats]) => {
+      // Converter para o formato da tabela usando o nome correto do produtor
+      data = Object.entries(entriesByProducer).map(([producerId, stats]) => {
         const avgValue = stats.totalValue / stats.totalWeight;
+        // Encontre o produtor correspondente na lista de produtores
+        const producer = producers.find((p) => p.id === producerId);
+        const producerName = producer ? producer.name : "Desconhecido";
+
         return [
           producerName,
           stats.municipality,
@@ -739,6 +773,10 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
     }
     if (selectedColor) {
       doc.text(`Classificação por Cor: ${selectedColor}`, 14, yPos);
+      yPos += 10;
+    }
+    if (searchTerm) {
+      doc.text(`Termo de busca: ${searchTerm}`, 14, yPos);
       yPos += 10;
     }
 
@@ -915,6 +953,13 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
         [[`Classificação por Cor: ${selectedColor}`]],
         { origin: `A${rowIndex}` },
       );
+      rowIndex++;
+    }
+
+    if (searchTerm) {
+      XLSX.utils.sheet_add_aoa(ws, [[`Termo de busca: ${searchTerm}`]], {
+        origin: `A${rowIndex}`,
+      });
       rowIndex++;
     }
 
@@ -1124,6 +1169,7 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
     setSelectedProducer(undefined);
     setSelectedColor(undefined);
     setSelectedRegion(undefined);
+    setSearchTerm("");
   };
 
   // Renderizar gráfico de barras
@@ -1607,6 +1653,22 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
                 )}
               </Button>
             </div>
+            <div className="relative w-full md:w-64">
+              <Input
+                type="text"
+                placeholder="Buscar por nome, município..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              {searchTerm && (
+                <X
+                  className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer"
+                  onClick={() => setSearchTerm("")}
+                />
+              )}
+            </div>
           </div>
           <Tabs
             value={reportType}
@@ -1774,27 +1836,17 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
                     <label className="text-sm font-medium">
                       Classificação por Cor
                     </label>
-                    <Select
-                      value={selectedColor}
-                      onValueChange={setSelectedColor}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma cor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {colors.map((color) => (
-                          <SelectItem key={color.id} value={color.name}>
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: color.hexColor }}
-                              />
-                              {color.code} - {color.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        placeholder="Digite o código da cor (1-7)"
+                        value={selectedColor || ""}
+                        onChange={(e) => setSelectedColor(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        min="1"
+                        max="7"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1860,6 +1912,18 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
                           setFromDate(undefined);
                           setToDate(undefined);
                         }}
+                      />
+                    </Badge>
+                  )}
+                  {searchTerm && (
+                    <Badge
+                      variant="secondary"
+                      className="flex items-center gap-1"
+                    >
+                      Busca: {searchTerm}
+                      <X
+                        className="h-3 w-3 ml-1 cursor-pointer"
+                        onClick={() => setSearchTerm("")}
                       />
                     </Badge>
                   )}
@@ -1937,7 +2001,18 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
                               (!selectedRegion ||
                                 municipalities.find(
                                   (m) => m.name === producer.municipality,
-                                )?.region === selectedRegion),
+                                )?.region === selectedRegion) &&
+                              (!searchTerm ||
+                                producer.name
+                                  .toLowerCase()
+                                  .includes(searchTerm.toLowerCase()) ||
+                                producer.municipality
+                                  .toLowerCase()
+                                  .includes(searchTerm.toLowerCase()) ||
+                                (producer.community &&
+                                  producer.community
+                                    .toLowerCase()
+                                    .includes(searchTerm.toLowerCase()))),
                           )
                           .slice(
                             (currentPage - 1) * itemsPerPage,
@@ -2157,15 +2232,23 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
                         </td>
                       </tr>
                     ) : getReportData().data.length > 0 ? (
-                      getReportData().data.map((row, index) => (
-                        <tr key={index} className="border-b hover:bg-muted/20">
-                          {row.map((cell, cellIndex) => (
-                            <td key={cellIndex} className="p-2">
-                              {cell}
-                            </td>
-                          ))}
-                        </tr>
-                      ))
+                      getReportData()
+                        .data.slice(
+                          (currentPage - 1) * itemsPerPage,
+                          currentPage * itemsPerPage,
+                        )
+                        .map((row, index) => (
+                          <tr
+                            key={index}
+                            className="border-b hover:bg-muted/20"
+                          >
+                            {row.map((cell, cellIndex) => (
+                              <td key={cellIndex} className="p-2">
+                                {cell}
+                              </td>
+                            ))}
+                          </tr>
+                        ))
                     ) : (
                       <tr>
                         <td
@@ -2178,6 +2261,46 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
                     )}
                   </tbody>
                 </table>
+              )}
+              {getReportData().data.length > itemsPerPage && (
+                <div className="flex justify-between items-center mt-4">
+                  <div className="text-sm text-muted-foreground">
+                    Mostrando{" "}
+                    {Math.min(
+                      (currentPage - 1) * itemsPerPage + 1,
+                      getReportData().data.length,
+                    )}{" "}
+                    a{" "}
+                    {Math.min(
+                      currentPage * itemsPerPage,
+                      getReportData().data.length,
+                    )}{" "}
+                    de {getReportData().data.length} registros
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
+                      disabled={currentPage === 1}
+                    >
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((prev) => prev + 1)}
+                      disabled={
+                        currentPage * itemsPerPage >=
+                        getReportData().data.length
+                      }
+                    >
+                      Próximo
+                    </Button>
+                  </div>
+                </div>
               )}
             </div>
           </Tabs>
@@ -2197,7 +2320,18 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
                           (!selectedRegion ||
                             municipalities.find(
                               (m) => m.name === producer.municipality,
-                            )?.region === selectedRegion),
+                            )?.region === selectedRegion) &&
+                          (!searchTerm ||
+                            producer.name
+                              .toLowerCase()
+                              .includes(searchTerm.toLowerCase()) ||
+                            producer.municipality
+                              .toLowerCase()
+                              .includes(searchTerm.toLowerCase()) ||
+                            (producer.community &&
+                              producer.community
+                                .toLowerCase()
+                                .includes(searchTerm.toLowerCase()))),
                       ).length}
                 </>
               ) : reportType === "entries-list" ? (
