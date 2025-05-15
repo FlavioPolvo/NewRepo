@@ -346,9 +346,9 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
           (p) => String(p.id) === producerId,
         );
         const producerName =
-          producerDetails?.name || entry.producerName || "Desconhecido";
+          producerDetails?.name?.trim() || entry.producerName?.trim() || "";
         const producerMunicipality =
-          producerDetails?.municipality || entry.municipality || "N/A";
+          producerDetails?.municipality?.trim() || entry.municipality?.trim() || "";
 
         if (!entriesByProducerIdForChart[producerId]) {
           entriesByProducerIdForChart[producerId] = {
@@ -581,59 +581,63 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
       ];
 
       type ProducerReportStats = {
-        municipality: string;
+        producerNameDisplay: string; // Adicionado por Manus
+        codComapiDisplay: string;    // Adicionado por Manus
+        municipalityDisplay: string; // Adicionado por Manus
         totalWeight: number;
         totalValue: number;
         entryCount: number;
-        sumUnitValue: number; // New field for sum of unit values
+        sumUnitValue: number;
       };
 
       const entriesByProducerId = filteredEntries.reduce<
-        Record<string, ProducerReportStats>
+        Record<string, ProducerReportStats> // Key is COMAPI Code (from entry.producerId)
       >((acc, entry) => {
-        const producerId = String(entry.producerId);
-        if (!acc[producerId]) {
-          acc[producerId] = {
-            municipality: entry.municipality || "N/A",
+        const comapiCode = String(entry.producerId); // This is the COMAPI code from the entry
+        const producerDetailsFromAllProducers = producers.find(
+          (p) => String(p.cod_na_comapi) === comapiCode
+        );
+
+        if (!acc[comapiCode]) {
+          acc[comapiCode] = {
+            // Use producerDetailsFromAllProducers for name and municipality if available
+            producerNameDisplay: producerDetailsFromAllProducers?.name?.trim() || entry.producerName?.trim() || "",
+            codComapiDisplay: comapiCode, // Display the COMAPI code itself
+            municipalityDisplay: producerDetailsFromAllProducers?.municipality?.trim() || entry.municipality?.trim() || "",
             totalWeight: 0,
             totalValue: 0,
             entryCount: 0,
-            sumUnitValue: 0, // Initialize sumUnitValue
+            sumUnitValue: 0,
           };
         }
-        acc[producerId].totalWeight += entry.netWeight || 0;
-        acc[producerId].totalValue += entry.totalValue || 0;
-        acc[producerId].sumUnitValue += entry.unitValue || 0; // Accumulate unitValue
-        acc[producerId].entryCount += 1;
-        if (
-          acc[producerId].municipality === "N/A" &&
-          entry.municipality &&
-          entry.municipality.trim() !== ""
-        ) {
-          acc[producerId].municipality = entry.municipality;
+        acc[comapiCode].totalWeight += entry.netWeight || 0;
+        acc[comapiCode].totalValue += entry.totalValue || 0;
+        acc[comapiCode].sumUnitValue += entry.unitValue || 0;
+        acc[comapiCode].entryCount += 1;
+
+        // If the municipality was initially blank from producerDetails, try to get it from the entry
+        if (!acc[comapiCode].municipalityDisplay && entry.municipality?.trim()) {
+            acc[comapiCode].municipalityDisplay = entry.municipality.trim();
         }
+        // If the producer name was initially blank, try to get it from the entry's producerName (already done by useReportData)
+        if (!acc[comapiCode].producerNameDisplay && entry.producerName?.trim()) {
+            acc[comapiCode].producerNameDisplay = entry.producerName.trim();
+        }
+
         return acc;
       }, {});
 
-      tableData = Object.entries(entriesByProducerId)
-        .map(([producerId, stats]) => {
-          const producerDetails = producers.find(
-            (p) => String(p.id) === producerId,
-          );
-          const producerNameForTable =
-            producerDetails?.name?.trim() || "Desconhecido";
-          const municipalityForTable =
-            producerDetails?.municipality?.trim() || stats.municipality;
-          // Calcular o valor médio como a soma dos valores unitários dividida pelo número de entradas
+      tableData = Object.values(entriesByProducerId) // Use Object.values to get the aggregated objects
+        .map((stats) => {
           const avgValue =
             stats.entryCount > 0 ? stats.sumUnitValue / stats.entryCount : 0;
           return [
-            producerNameForTable,
-            producerDetails?.cod_na_comapi || "N/A",
-            municipalityForTable,
+            stats.producerNameDisplay, // Display Name
+            stats.codComapiDisplay,    // Display COMAPI Code
+            stats.municipalityDisplay, // Display Municipality
             stats.totalWeight.toFixed(2),
-            `R$ ${stats.totalValue.toFixed(2)}`,
-            `R$ ${avgValue.toFixed(2)}`,
+            `R$ ${stats.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            `R$ ${avgValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
           ];
         })
         .sort((aRow, bRow) => {

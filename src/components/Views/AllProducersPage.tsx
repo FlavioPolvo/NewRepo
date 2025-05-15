@@ -14,7 +14,7 @@ import { ArrowLeft, ArrowRight, Search as SearchIcon, Home as HomeIcon } from "l
 import { useNavigate } from "react-router-dom";
 import { Producer } from "@/types/supabase"; // Ajuste o caminho e a definição do tipo conforme necessário
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 30;
 
 const AllProducersPage: React.FC = () => {
   const [producers, setProducers] = useState<Producer[]>([]);
@@ -109,10 +109,10 @@ const AllProducersPage: React.FC = () => {
               {paginatedProducers.map((producer) => (
                 <TableRow key={producer.id}>
                   <TableCell>{producer.name}</TableCell>
-                  <TableCell>{producer.cod_na_comapi || "N/A"}</TableCell>
-                  <TableCell>{producer.municipality || "N/A"}</TableCell>
-                  <TableCell>{producer.cpf || "N/A"}</TableCell>
-                  <TableCell>{producer.status || "N/A"}</TableCell>
+                  <TableCell>{producer.cod_na_comapi || ""}</TableCell>
+                  <TableCell>{producer.municipality || ""}</TableCell>
+                  <TableCell>{producer.cpf || ""}</TableCell>
+                  <TableCell>{producer.status || ""}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

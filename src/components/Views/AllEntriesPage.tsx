@@ -16,7 +16,7 @@ import { Entry, Producer, Municipality, Color, Community } from "@/types/supabas
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 30;
 
 // Interface para Entry com nomes de produtor, município e cor
 interface EnrichedEntry {
@@ -63,21 +63,24 @@ const AllEntriesPage: React.FC = () => {
 
         // Enrich entries with names
         const enrichedEntriesData = (entriesData || []).map((entry) => {
-          const producer = (producersData || []).find(p => p.id === entry.producer_id);
-          
           return {
+            // Fields from the original 'entry' object
             id: entry.id,
             date: entry.date,
-            producer_name: producer?.name || "Desconhecido",
-            municipality_name: producer?.municipality || "N/A", // Usando município do produtor
-            color_name: (colorsData || []).find(c => String(c.code) === String(entry.color_code))?.name || `Cor ${entry.color_code}`,
-            community_name: producer?.community || "N/A", // Usando comunidade do produtor
             lot: entry.lot,
             net_weight: entry.net_weight,
-            unit_value: entry.unit_value,
+            unit_value: entry.unit_value, 
             total_value: entry.total_value,
             producer_id: entry.producer_id,
-            color_code: entry.color_code
+            color_code: entry.color_code,
+
+            // Enriched fields
+            producer_name: entry.producers?.name || "Desconhecido", // Nome do produtor via join
+            municipality_name: entry.municipality || "N/A", // Município diretamente da entrada
+            community_name: entry.community || "N/A",       // Comunidade diretamente da entrada
+            
+            // Color name enrichment remains the same
+            color_name: (colorsData || []).find(c => String(c.code) === String(entry.color_code))?.name || `Cor ${entry.color_code}`,
           };
         });
 

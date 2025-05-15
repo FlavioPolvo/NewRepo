@@ -103,7 +103,14 @@ export interface Database {
           total_tare: number;
           total_value: number;
           unit_value: number;
+          municipality: string | null; // Added by Manus for entry's municipality
+          community: string | null;    // Added by Manus for entry's community
           updated_at: string | null;
+          producers: { // Related producer data from join
+            name: string | null;
+            municipality: string | null; // Producer's municipality
+            community: string | null;    // Producer's community
+          } | null;
         };
         Insert: {
           anal?: string | null;

@@ -113,7 +113,7 @@ export const useReportData = () => {
             console.log("Raw colorsResult:", colorsResult);
 
             const producersData: Producer[] = producersResult.map((p: any) => ({
-                id: p.id,
+                id: String(p.id), // Convert to string for consistency
                 name: p.name,
                 cod_na_comapi: p.cod_na_comapi,
                 municipality: p.municipality || "",
@@ -122,13 +122,16 @@ export const useReportData = () => {
 
             const entriesData: EntryRecord[] = entriesResult.map((e: any) => {
                 console.log("Processing entry:", e);
+                const comapiCode = String(e.producer_id); // Assuming e.producer_id is the COMAPI code
+                const producerDetails = producersData.find(p => p.cod_na_comapi === comapiCode);
+
                 return {
-                    id: e.id,
+                    id: String(e.id),
                     date: new Date(e.date),
-                    producerId: e.producer_id,
-                    producerName: e.producers?.name || "N/A",
-                    municipality: e.municipality || e.producers?.municipality || "N/A",
-                    community: e.community || e.producers?.community || "N/A",
+                    producerId: comapiCode, // This is the COMAPI code
+                    producerName: producerDetails?.name || "",
+                    municipality: e.municipality || producerDetails?.municipality || "", // Prioritize municipality from entry, fallback to producer
+                    community: e.community || producerDetails?.community || "",   // Prioritize community from entry, fallback to producer
                     quantity: e.quantity || 0,
                     grossWeight: e.gross_weight || 0,
                     netWeight: e.net_weight || 0,
