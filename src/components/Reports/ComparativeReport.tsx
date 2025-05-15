@@ -87,10 +87,8 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
     const [reportType, setReportType] = useState<string>("period");
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [itemsPerPage, setItemsPerPage] = useState<number>(10);
-    const [fromDate, setFromDate] = useState<Date | undefined>(
-        subMonths(new Date(), 3),
-    );
-    const [toDate, setToDate] = useState<Date | undefined>(new Date());
+    const [fromDate, setFromDate] = useState<Date | undefined>();
+    const [toDate, setToDate] = useState<Date | undefined>();
     const [selectedMunicipality, setSelectedMunicipality] = useState<string>();
     const [selectedProducer, setSelectedProducer] = useState<string>();
     const [selectedColor, setSelectedColor] = useState<string>();
@@ -506,6 +504,50 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
                     ];
                 },
             );
+        } else if (reportType === "community") { // Adicionado por Manus
+            title = "Relatório de Produção por Comunidade";
+            headers = [
+                "Comunidade",
+                "Quantidade (kg)",
+                "Nº de Produtores",
+                "Média por Produtor (kg)",
+            ];
+
+            type CommunityStats = {
+                totalWeight: number;
+                producerCount: Set<string>;
+            };
+
+            const entriesByCommunity = filteredEntries.reduce<
+                Record<string, CommunityStats>
+            >((acc, entry) => {
+                if (!entry.community) return acc; // Pular entradas sem comunidade
+                if (!acc[entry.community]) {
+                    acc[entry.community] = {
+                        totalWeight: 0,
+                        producerCount: new Set(),
+                    };
+                }
+                acc[entry.community].totalWeight += entry.netWeight || 0;
+                acc[entry.community].producerCount.add(entry.producerId);
+                return acc;
+            }, {});
+
+            tableData = Object.entries(entriesByCommunity)
+                .map(([communityName, stats]) => {
+                    const avgPerProducer = stats.producerCount.size > 0 ? stats.totalWeight / stats.producerCount.size : 0;
+                    return [
+                        communityName,
+                        stats.totalWeight.toFixed(2),
+                        stats.producerCount.size,
+                        avgPerProducer.toFixed(2),
+                    ];
+                })
+                .sort((aRow, bRow) => {
+                    const weightA = parseFloat(aRow[1] as string); // Coluna "Quantidade (kg)"
+                    const weightB = parseFloat(bRow[1] as string); // Coluna "Quantidade (kg)"
+                    return weightB - weightA; // Ordenar por Quantidade (kg) decrescente
+                });
         } else if (reportType === "producer") {
             title = "Relatório de Produção por Produtor";
             headers = [
@@ -673,8 +715,8 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
 
     // Limpar filtros
     const clearFilters = () => {
-        setFromDate(subMonths(new Date(), 3));
-        setToDate(new Date());
+        setFromDate(undefined); // Modificado por Manus
+        setToDate(undefined); // Modificado por Manus
         setSelectedMunicipality(undefined);
         setSelectedProducer(undefined);
         setSelectedColor(undefined);
