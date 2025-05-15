@@ -86,15 +86,32 @@ const ProductionSummary: React.FC<ProductionSummaryProps> = ({
 
     // Filter data based on selections
     const filteredData = React.useMemo(() => {
-        let filtered = { ...productionData };
+        // Aggregate productionByMunicipality to remove duplicates before filtering or direct use
+        const aggregatedMunicipalities: Record<string, number> = {};
+        productionData.productionByMunicipality.forEach(item => {
+            const key = item.municipality.trim(); // Use trimmed municipality name as key
+            if (aggregatedMunicipalities[key]) {
+                aggregatedMunicipalities[key] += item.production;
+            } else {
+                aggregatedMunicipalities[key] = item.production;
+            }
+        });
+        const uniqueProductionByMunicipality = Object.entries(aggregatedMunicipalities).map(
+            ([mun, prod]) => ({ municipality: mun, production: prod })
+        ).sort((a, b) => b.production - a.production);
+
+        let filtered = {
+            ...productionData,
+            productionByMunicipality: uniqueProductionByMunicipality // Start with aggregated data
+        };
 
         // Apply municipality filter if not 'all'
         if (municipality !== "all") {
             filtered = {
                 ...filtered,
                 productionByMunicipality:
-                    productionData.productionByMunicipality.filter(
-                        (item) => item.municipality.toLowerCase() === municipality,
+                    uniqueProductionByMunicipality.filter( // Filter from aggregated data
+                        (item) => item.municipality.toLowerCase() === municipality.toLowerCase(), // Ensure case-insensitive comparison
                     ),
             };
         }
@@ -104,7 +121,7 @@ const ProductionSummary: React.FC<ProductionSummaryProps> = ({
             filtered = {
                 ...filtered,
                 productionByColor: productionData.productionByColor.filter(
-                    (item) => item.color.toLowerCase() === colorFilter,
+                    (item) => item.color.toLowerCase() === colorFilter.toLowerCase(), // Ensure case-insensitive comparison
                 ),
             };
         }
