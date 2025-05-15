@@ -9,8 +9,6 @@ export default defineConfig({
   // ou usar '/scomapi/' como padrão em produção se VITE_BASE_PATH não estiver definido.
   // Em desenvolvimento, continuará como '/'.
   base: process.env.NODE_ENV === "development" ? "/" : (process.env.VITE_BASE_PATH || "/scomapi/"),
-   // base: process.env.NODE_ENV === "development" ? "/" : process.env.VITE_BASE_PATH || "/",
-
   optimizeDeps: {
     entries: ["src/main.tsx", "src/tempobook/**/*"],
   },
