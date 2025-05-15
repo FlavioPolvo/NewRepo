@@ -585,6 +585,7 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
         totalWeight: number;
         totalValue: number;
         entryCount: number;
+        sumUnitValue: number; // New field for sum of unit values
       };
 
       const entriesByProducerId = filteredEntries.reduce<
@@ -597,10 +598,12 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
             totalWeight: 0,
             totalValue: 0,
             entryCount: 0,
+            sumUnitValue: 0, // Initialize sumUnitValue
           };
         }
         acc[producerId].totalWeight += entry.netWeight || 0;
         acc[producerId].totalValue += entry.totalValue || 0;
+        acc[producerId].sumUnitValue += entry.unitValue || 0; // Accumulate unitValue
         acc[producerId].entryCount += 1;
         if (
           acc[producerId].municipality === "N/A" &&
@@ -621,11 +624,12 @@ const ComparativeReport: React.FC<ComparativeReportProps> = ({
             producerDetails?.name?.trim() || "Desconhecido";
           const municipalityForTable =
             producerDetails?.municipality?.trim() || stats.municipality;
+          // Calcular o valor médio como a soma dos valores unitários dividida pelo número de entradas
           const avgValue =
-            stats.totalWeight > 0 ? stats.totalValue / stats.totalWeight : 0;
+            stats.entryCount > 0 ? stats.sumUnitValue / stats.entryCount : 0;
           return [
             producerNameForTable,
-            producerDetails?.code || "N/A",
+            producerDetails?.cod_na_comapi || "N/A",
             municipalityForTable,
             stats.totalWeight.toFixed(2),
             `R$ ${stats.totalValue.toFixed(2)}`,

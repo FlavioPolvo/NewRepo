@@ -393,3 +393,10 @@ export const Constants = {
     Enums: {},
   },
 } as const;
+
+
+export type Producer = Database['public']['Tables']['producers']['Row'];
+export type Entry = Database['public']['Tables']['entries']['Row'];
+export type Municipality = Database['public']['Tables']['municipalities']['Row'];
+export type Color = Database['public']['Tables']['colors']['Row'];
+export type Community = Database['public']['Tables']['communities']['Row'];

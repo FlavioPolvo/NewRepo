@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom"; // Adicionado por Manus
 import {
   Card,
   CardContent,
@@ -33,6 +34,7 @@ import { useReportData } from "@/hooks/useReportData";
 import SupabaseConfig from "./SupabaseConfig";
 
 const HomePage = () => {
+  const navigate = useNavigate(); // Adicionado por Manus
   const [date, setDate] = React.useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = React.useState("dashboard");
   const { data, loading } = useReportData();
@@ -205,7 +207,7 @@ const HomePage = () => {
                         variant="outline"
                         size="sm"
                         className="w-full"
-                        onClick={() => setActiveTab("producers")}
+                        onClick={() => navigate("/producers")}
                       >
                         <Users className="mr-2 h-4 w-4" /> Ver todos os
                         produtores
@@ -235,7 +237,7 @@ const HomePage = () => {
                         variant="outline"
                         size="sm"
                         className="w-full"
-                        onClick={() => setActiveTab("entry")}
+                        onClick={() => navigate("/entries")}
                       >
                         <Package className="mr-2 h-4 w-4" /> Ver todas as
                         entradas
