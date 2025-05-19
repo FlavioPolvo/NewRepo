@@ -39,7 +39,6 @@ const HomePage = () => {
   const [activeTab, setActiveTab] = React.useState("dashboard");
   const { data, loading } = useReportData();
   const [showSupabaseConfig, setShowSupabaseConfig] = React.useState(false);
-  const { user, hasPermission } = useAuth();
 
   return (
     <div className="min-h-screen bg-background">

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database, Tables, TablesInsert } from "@/types/supabase"; // Assuming types are in a separate file as per previous structure
+import { Producer, EntryRecord } from "@/hooks/useReportData"; // Importando os tipos para as funções de atualização
 
 // Initialize Supabase client
 // Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are in your .env file
@@ -124,6 +125,76 @@ export async function getEntries(): Promise<Tables<"entries">[]> {
         throw error;
     }
     return data || [];
+}
+
+// Função para atualizar um produtor existente
+export async function updateProducer(id: string, data: Partial<Producer>): Promise<{ success: boolean }> {
+    console.log("Atualizando produtor:", id, data);
+    
+    const { error } = await supabase
+        .from("producers")
+        .update({
+            name: data.name,
+            cod_na_comapi: data.cod_na_comapi,
+            municipality: data.municipality,
+            community: data.community,
+            // Adicione outros campos conforme necessário
+        })
+        .eq("id", id);
+    
+    if (error) {
+        console.error("Erro ao atualizar produtor:", error);
+        throw error;
+    }
+    
+    return { success: true };
+}
+
+// Função para atualizar uma entrada existente
+export async function updateEntry(id: string, data: Partial<EntryRecord>): Promise<{ success: boolean }> {
+    console.log("Atualizando entrada:", id, data);
+    
+    // Converter os dados para o formato esperado pelo Supabase
+    const supabaseData: any = {
+        date: data.date,
+        producer_id: data.producerId,
+        municipality: data.municipality,
+        community: data.community,
+        quantity: data.quantity,
+        gross_weight: data.grossWeight,
+        net_weight: data.netWeight,
+        tare: data.tare,
+        total_tare: data.totalTare,
+        unit_value: data.unitValue,
+        total_value: data.totalValue,
+        color_code: data.colorCode,
+        humidity: data.humidity,
+        apiary: data.apiary,
+        lot: data.lot,
+        contract: data.contract,
+        analysis_date: data.analysisDate,
+        invoice_number: data.invoiceNumber,
+        anal: data.anal,
+    };
+
+    // Remover campos undefined para não sobrescrever com null
+    Object.keys(supabaseData).forEach(key => {
+        if (supabaseData[key] === undefined) {
+            delete supabaseData[key];
+        }
+    });
+
+    const { error } = await supabase
+        .from("entries")
+        .update(supabaseData)
+        .eq("id", id);
+    
+    if (error) {
+        console.error("Erro ao atualizar entrada:", error);
+        throw error;
+    }
+    
+    return { success: true };
 }
 
 // Ensure all previously defined types (Json, Database, Tables, etc.) are either in this file or correctly imported if they were moved.

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { supabase, getProducers } from "@/lib/supabase"; // Ajuste o caminho conforme necessário
+import { supabase, getProducers, updateProducer } from "@/lib/supabase"; // Adicionado updateProducer
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,15 +16,15 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"; // Adicionado por Manus
-import { ArrowLeft, ArrowRight, Search as SearchIcon, Home as HomeIcon, FileSpreadsheet, FileText as FilePdf } from "lucide-react"; // Adicionado FileSpreadsheet e FilePdf por Manus
+} from "@/components/ui/select";
+import { ArrowLeft, ArrowRight, Search as SearchIcon, Home as HomeIcon, FileSpreadsheet, FileText as FilePdf, Edit } from "lucide-react"; // Adicionado Edit
 import { useNavigate } from "react-router-dom";
-import { Producer } from "@/types/supabase"; // Ajuste o caminho e a definição do tipo conforme necessário
-import * as XLSX from "xlsx"; // Adicionado por Manus
-import jsPDF from "jspdf"; // Adicionado por Manus
-import autoTable from "jspdf-autotable"; // Adicionado por Manus
-
-// Removido ITEMS_PER_PAGE constante, será estado local
+import { Producer } from "@/types/supabase";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import EditModal from "@/components/EditModal"; // Adicionado
+import ProducerEditForm from "@/components/ProducerEditForm"; // Adicionado
 
 const AllProducersPage: React.FC = () => {
   const [producers, setProducers] = useState<Producer[]>([]);
@@ -32,23 +32,28 @@ const AllProducersPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState<number>(10); // Adicionado estado para itens por página por Manus
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const navigate = useNavigate();
+  
+  // Estados para edição
+  const [editingProducer, setEditingProducer] = useState<any | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const fetchProducers = async () => {
+    setLoading(true);
+    try {
+      const data = await getProducers();
+      setProducers(data || []);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || "Erro ao buscar produtores");
+      setProducers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchProducers = async () => {
-      setLoading(true);
-      try {
-        const data = await getProducers();
-        setProducers(data || []);
-        setError(null);
-      } catch (err: any) {
-        setError(err.message || "Erro ao buscar produtores");
-        setProducers([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchProducers();
   }, []);
 
@@ -66,14 +71,14 @@ const AllProducersPage: React.FC = () => {
   const paginatedProducers = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredProducers.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredProducers, currentPage, itemsPerPage]); // Adicionado itemsPerPage na dependência por Manus
+  }, [filteredProducers, currentPage, itemsPerPage]);
 
-  const totalPages = Math.ceil(filteredProducers.length / itemsPerPage); // Atualizado para usar itemsPerPage do estado por Manus
+  const totalPages = Math.ceil(filteredProducers.length / itemsPerPage);
 
   const handleItemsPerPageChange = (value: string) => {
     setItemsPerPage(Number(value));
-    setCurrentPage(1); // Resetar para a primeira página ao mudar itens por página
-  }; // Adicionado por Manus
+    setCurrentPage(1);
+  };
 
   const handleExportToXLS = () => {
     const worksheet = XLSX.utils.json_to_sheet(filteredProducers.map(p => ({
@@ -86,7 +91,7 @@ const AllProducersPage: React.FC = () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Produtores");
     XLSX.writeFile(workbook, `produtores_export_${new Date().toISOString().split('T')[0]}.xlsx`);
-  }; // Adicionado por Manus
+  };
 
   const handleExportToPDF = () => {
     const doc = new jsPDF();
@@ -101,8 +106,29 @@ const AllProducersPage: React.FC = () => {
       ]),
     });
     doc.save(`produtores_export_${new Date().toISOString().split('T')[0]}.pdf`);
-  }; // Adicionado por Manus
+  };
 
+  // Funções para edição
+  const handleEdit = (producer: any) => {
+    setEditingProducer({...producer});
+  };
+
+  const handleSave = async () => {
+    if (!editingProducer) return;
+    
+    setIsSaving(true);
+    try {
+      await updateProducer(editingProducer.id, editingProducer);
+      // Atualizar a lista de produtores após salvar
+      await fetchProducers();
+      setEditingProducer(null);
+    } catch (error) {
+      console.error("Erro ao atualizar produtor:", error);
+      alert("Erro ao salvar as alterações. Por favor, tente novamente.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (loading) {
     return <div className="p-4 text-center">Carregando produtores...</div>;
@@ -129,7 +155,6 @@ const AllProducersPage: React.FC = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm flex-grow"
         />
-        {/* Botão de busca pode ser removido se a busca for automática ao digitar */}
         <div className="flex gap-2 ml-auto">
             <Button variant="outline" onClick={handleExportToXLS} disabled={filteredProducers.length === 0}>
                 <FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar XLS
@@ -154,6 +179,7 @@ const AllProducersPage: React.FC = () => {
                 <TableHead>Município</TableHead>
                 <TableHead>CPF</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -164,6 +190,11 @@ const AllProducersPage: React.FC = () => {
                   <TableCell>{producer.municipality || ""}</TableCell>
                   <TableCell>{producer.cpf || ""}</TableCell>
                   <TableCell>{producer.status || ""}</TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(producer)}>
+                      <Edit className="h-4 w-4 mr-1" /> Editar
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -227,9 +258,24 @@ const AllProducersPage: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* Modal de Edição */}
+      {editingProducer && (
+        <EditModal
+          isOpen={!!editingProducer}
+          onClose={() => setEditingProducer(null)}
+          onSave={handleSave}
+          title="Editar Produtor"
+          isSaving={isSaving}
+        >
+          <ProducerEditForm
+            producer={editingProducer}
+            onChange={setEditingProducer}
+          />
+        </EditModal>
+      )}
     </div>
   );
 };
 
 export default AllProducersPage;
-
